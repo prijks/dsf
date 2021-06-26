@@ -1,3 +1,5 @@
+// rename to "secrets.h" and adjust to your needs
+
 #ifndef _DSF_SECRETS_H
 #define _DSF_SECRETS_H
 
