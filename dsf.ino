@@ -9,11 +9,11 @@
 #include "secrets.h"
 #include "display.h"
 #include "clock.h"
-#include "mqttclient.h"
+#include "network.h"
 
 DsfDisplay dsfDisplay;
 DsfClock dsfClock;
-DsfMqttClient dsfMqttClient;
+DsfNetwork dsfNetwork;
 
 void setup()
 {
@@ -22,37 +22,15 @@ void setup()
   dsfDisplay.initialize();
   dsfClock.initialize();
 
-  // Connect to Wi-Fi
-  Serial.print("Connecting to ");
-  Serial.println(wifiSsid);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(wifiSsid, wifiPassword);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.println("WiFi connected.");
-
-  dsfMqttClient.setCallback(mqtt_callback);
-  dsfMqttClient.connect();
+  dsfNetwork.initialize();
+  dsfNetwork.setCallback(mqtt_callback);
 }
 
 void loop()
 {
-  char txtBuffer[12];
-
-  Serial.println("hmm1");
-  dsfMqttClient.checkConnection();
-  Serial.println("hmm2");
-  dsfDisplay.updateDisplay(WiFi.RSSI());
-  Serial.println("hmm3");
-
+  uint16_t network_state = dsfNetwork.loop();
+  dsfDisplay.setNetworkState(network_state);
   dsfDisplay.setTime(dsfClock.getTime());
-
-  Serial.println("hmm4");
-  delay(250);
 }
 
 char msg[128];
@@ -79,14 +57,20 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   {
     dsfDisplay.setOutsideTemp(msg);
   }
-  else if (strcmp(topic, songTopic) == 0)
+  else if (strcmp(topic, songTitleTopic) == 0)
   {
-    dsfDisplay.setSong(msg);
+    dsfDisplay.setSongTitle(msg);
+  }
+  else if (strcmp(topic, songArtistTopic) == 0)
+  {
+    dsfDisplay.setSongArtist(msg);
+  }
+  else if (strcmp(topic, musicStatusTopic) == 0)
+  {
+    dsfDisplay.setMusicStatus(msg);
   }
   else if (strcmp(topic, motionTopic) == 0)
   {
     dsfDisplay.setMotion(msg);
   }
-
-  Serial.println("hmmmmmmm callback hmm");
 }

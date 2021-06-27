@@ -15,7 +15,9 @@ static const char *mqttPassword = "YOURMQTTPASSWORD";
 
 static const char *insideTempTopic = "path/to/inside/temperature";
 static const char *outsideTempTopic = "path/to/outside/temperature";
-static const char *songTopic = "path/to/song/info";
+static const char *songTitleTopic = "path/to/music/title";
+static const char *songArtistTopic = "path/to/music/artist";
+static const char *musicStatusTopic = "path/to/music/status";
 static const char *motionTopic = "path/to/motion/detector";
 
 #endif // _DSF_SECRETS_H

@@ -1,78 +1,86 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-#include "mqttclient.h"
+#include "network.h"
 #include "secrets.h"
 
 WiFiClient wifiClient;
-PubSubClient client(wifiClient);
+PubSubClient mqttClient(wifiClient);
 long lastReconnectAttempt = 0;
 
-DsfMqttClient::DsfMqttClient()
+void DsfNetwork::initialize()
 {
-  shouldConnect = false;
+  network_state = NETWORK_STATE_WIFI_DOWN;
 }
 
-void DsfMqttClient::connect()
+void DsfNetwork::checkStatus()
 {
-  // client.setServer(mqttServer, 1883);
-  // client.setSocketTimeout(1);
-  shouldConnect = true;  
-}
-
-bool DsfMqttClient::reconnect() {
-  if (shouldConnect) {
-    Serial.print("Current mqtt status: ");
-    Serial.println(client.state());
-    Serial.print("connecting to mqtt... ");
-    if (wifiClient.connect(mqttServer, mqttPort)) {
-      if (client.connect("dsfClient", mqttUser, mqttPassword)) {
-        Serial.println("connected!");
-        client.subscribe(insideTempTopic);
-        client.subscribe(outsideTempTopic);
-        client.subscribe(songTopic);
-        client.subscribe(motionTopic);
-      } else {
-        Serial.println("mqtt failed to connect");
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    if (network_state != NETWORK_STATE_WIFI_STARTING)
+    {
+      network_state = NETWORK_STATE_WIFI_DOWN;
+    }
+  }
+  else
+  {
+    if (!wifiClient.connected() || !mqttClient.connected())
+    {
+      if (network_state != NETWORK_STATE_WIFI_UP_MQTT_STARTING)
+      {
+        network_state = NETWORK_STATE_WIFI_UP_MQTT_DOWN;
       }
-    } else {
-      Serial.print("wifi failed to connect");
     }
-    if (!client.connected()) {
-      
-    }
-    return client.connected();
-  } else {
-    return false;
   }
 }
 
-bool DsfMqttClient::checkConnection()
+void DsfNetwork::fixStatus()
 {
-  if (!client.connected()) {
-    long now = millis();
-    if (now - lastReconnectAttempt > 5000) {
-      lastReconnectAttempt = now;
-      // Attempt to reconnect
-      if (reconnect()) {
-        lastReconnectAttempt = 0;
-        return true;
-      }
+  switch (network_state)
+  {
+  case NETWORK_STATE_WIFI_DOWN:
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(wifiSsid, wifiPassword);
+    network_state = NETWORK_STATE_WIFI_STARTING;
+    break;
+  case NETWORK_STATE_WIFI_STARTING:
+    break;
+  case NETWORK_STATE_WIFI_UP_MQTT_DOWN:
+    if (wifiClient.connect(mqttServer, mqttPort))
+    {
+      mqttClient.connect("dsfClient", mqttUser, mqttPassword);
+      network_state = NETWORK_STATE_WIFI_UP_MQTT_STARTING;
     }
-    return false;
-  } else {
-    // Client connected
-
-    Serial.println("preloop hmm");
-    client.loop();
-    Serial.println("postloop hmm");
-    return true;
+    break;
+  case NETWORK_STATE_WIFI_UP_MQTT_STARTING:
+    if (mqttClient.connected())
+    {
+      mqttClient.subscribe(insideTempTopic);
+      mqttClient.subscribe(outsideTempTopic);
+      mqttClient.subscribe(songTitleTopic);
+      mqttClient.subscribe(songArtistTopic);
+      mqttClient.subscribe(musicStatusTopic);
+      //mqttClient.subscribe(motionTopic);
+      network_state = NETWORK_STATE_WIFI_UP_MQTT_UP;
+    }
+    break;
+  case NETWORK_STATE_WIFI_UP_MQTT_UP:
+    break;
   }
-
-  // return client.connected();
 }
 
-void DsfMqttClient::setCallback(MQTT_CALLBACK_SIGNATURE)
-{  
-  client.setCallback(callback);
+uint16_t DsfNetwork::loop()
+{
+  checkStatus();
+  fixStatus();
+  if (network_state == NETWORK_STATE_WIFI_UP_MQTT_UP)
+  {
+    mqttClient.loop();
+  }
+  return network_state;
+}
+
+void DsfNetwork::setCallback(MQTT_CALLBACK_SIGNATURE)
+{
+  mqttClient.setCallback(callback);
 }
