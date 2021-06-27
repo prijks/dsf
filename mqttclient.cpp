@@ -15,19 +15,31 @@ DsfMqttClient::DsfMqttClient()
 
 void DsfMqttClient::connect()
 {
-  client.setServer(mqttServer, 1883);
+  // client.setServer(mqttServer, 1883);
+  // client.setSocketTimeout(1);
   shouldConnect = true;  
 }
 
 bool DsfMqttClient::reconnect() {
   if (shouldConnect) {
+    Serial.print("Current mqtt status: ");
+    Serial.println(client.state());
     Serial.print("connecting to mqtt... ");
-    if (client.connect("dsfClient", mqttUser, mqttPassword)) {
-      Serial.println("connected!");
-      client.subscribe("house/basement/desk/music/#");
+    if (wifiClient.connect(mqttServer, mqttPort)) {
+      if (client.connect("dsfClient", mqttUser, mqttPassword)) {
+        Serial.println("connected!");
+        client.subscribe(insideTempTopic);
+        client.subscribe(outsideTempTopic);
+        client.subscribe(songTopic);
+        client.subscribe(motionTopic);
+      } else {
+        Serial.println("mqtt failed to connect");
+      }
+    } else {
+      Serial.print("wifi failed to connect");
     }
     if (!client.connected()) {
-      Serial.println("failed to connect");
+      
     }
     return client.connected();
   } else {
@@ -44,15 +56,20 @@ bool DsfMqttClient::checkConnection()
       // Attempt to reconnect
       if (reconnect()) {
         lastReconnectAttempt = 0;
+        return true;
       }
     }
+    return false;
   } else {
     // Client connected
 
+    Serial.println("preloop hmm");
     client.loop();
+    Serial.println("postloop hmm");
+    return true;
   }
 
-  return client.connected();
+  // return client.connected();
 }
 
 void DsfMqttClient::setCallback(MQTT_CALLBACK_SIGNATURE)

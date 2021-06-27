@@ -35,3 +35,8 @@ void DsfClock::initialize()
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
 }
+
+DateTime DsfClock::getTime()
+{
+  return rtc.now();  
+}

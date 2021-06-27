@@ -43,13 +43,19 @@ void loop()
 {
   char txtBuffer[12];
 
+  Serial.println("hmm1");
   dsfMqttClient.checkConnection();
+  Serial.println("hmm2");
   dsfDisplay.updateDisplay(WiFi.RSSI());
+  Serial.println("hmm3");
 
+  dsfDisplay.setTime(dsfClock.getTime());
+
+  Serial.println("hmm4");
   delay(250);
 }
 
-char song[128];
+char msg[128];
 
 void mqtt_callback(char *topic, byte *payload, unsigned int length)
 {
@@ -59,10 +65,28 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
   for (int i = 0; i < length; i++)
   {
     Serial.print((char)payload[i]);
-    song[i] = (char)payload[i];
+    msg[i] = (char)payload[i];
   }
   Serial.println();
 
-  song[length] = '\0';
-  dsfDisplay.setSong(song);
+  msg[length] = '\0';
+
+  if (strcmp(topic, insideTempTopic) == 0)
+  {
+    dsfDisplay.setInsideTemp(msg);
+  }
+  else if (strcmp(topic, outsideTempTopic) == 0)
+  {
+    dsfDisplay.setOutsideTemp(msg);
+  }
+  else if (strcmp(topic, songTopic) == 0)
+  {
+    dsfDisplay.setSong(msg);
+  }
+  else if (strcmp(topic, motionTopic) == 0)
+  {
+    dsfDisplay.setMotion(msg);
+  }
+
+  Serial.println("hmmmmmmm callback hmm");
 }
